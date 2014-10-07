@@ -1,25 +1,71 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template.Rmd"
+author: "Scott Shander"
+date: "Tuesday, October 07, 2014"
+output: html_document
 ---
 
+Loading and preprocessing the data
+----------------
+Let's read the file in and format the date varlable. Also let's create another variable for day, to use in aggregating totals and averages.
 
-## Loading and preprocessing the data
+```{r, echo=TRUE}
+setwd("C:/Users/Owner/Documents/R")
+act<-read.csv("activity.csv")
+act$date <-as.Date(act$date)
+act$day <- substring(act$date,9,10)
+```
 
+What is mean total number of steps taken per day?
+----------------
+below is a histogram, along with the mean and median.
+```{r, echo=TRUE}
+total_steps_per_day <-tapply(act$steps,act$day, sum)
+hist(total_steps_per_day)
+mean <- mean(total_steps_per_day,na.rm=TRUE)
+median <- median(total_steps_per_day,na.rm=TRUE)
+mean
+median
 
+```
 
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+What is the average daily activity pattern?
+--------------------------
+Notice the chart of the average activity over time throughout the day.
+```{r, echo=TRUE}
+avg_steps<- aggregate(act$steps, list(interval=act$interval), mean, na.rm=TRUE)
+plot(avg_steps$interval,avg_steps$x,type = "l")
+avg_steps$interval[which.max(avg_steps$x)]
+```
+Imputing missing values
+-------------------------
+here, I calculated the average for each 5-minute interval and imputed for all missing values.  The change as has a marginal impact on the calculations. 
+```{r, echo=TRUE}
+sum(is.na(act))
+library(plyr)
+act2 <- join(act, avg_steps, by = "interval")
+act2$all_steps <-ifelse(!is.na(act2$steps),act2$steps,act2$x)
+act2 <- act2[,c(6,2,3,4)]
+total_steps_per_day_fill <-tapply(act2$all_steps,act2$day, sum)
+hist(total_steps_per_day_fill)
+mean_fill <- mean(total_steps_per_day_fill,na.rm=TRUE)
+median_fill <- median(total_steps_per_day_fill,na.rm=TRUE)
+mean_fill
+median_fill
+mean_fill ==mean
+median_fill==median
+mean_fill-mean
+```
+Are there differences in activity patterns between weekdays and weekends?
+-----------------
+It appears so when you look at the chart!
+```{r, echo=TRUE}
+act2$weekday <- as.factor(ifelse(weekdays(act2$date)=="Saturday"|weekdays(act2$date)=="Sunday","weekend","weekday"))
+act3 <- act2[act2$weekday == "weekday",]
+act4 <- act2[act2$weekday =="weekend",]
+avg_steps_weekday<- aggregate(act3$all_steps, list(interval=act3$interval), mean)
+avg_steps_weekend<- aggregate(act4$all_steps, list(interval=act4$interval), mean)
+plot(avg_steps_weekday$interval,avg_steps_weekday$x,type = "l")
+lines(avg_steps_weekend$interval,avg_steps_weekend$x,type = "l", col="red")
+legend(cex=0.7,"topright",c("weekday","weekend"), col=c("black","red"), pch=1, pt.cex = 1)
+```
